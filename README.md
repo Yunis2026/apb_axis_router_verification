@@ -93,3 +93,44 @@ tb/
 * Add a scoreboard for end-to-end packet checking
 * Add functional coverage and constrained-random testing
 * Build a regression test list and closure report
+
+## Waveform Evidence
+
+<details>
+<summary><b>1. Smoke Test - Default Routing</b></summary>
+
+Verifies default packet routing based on `s_tdest` and packet counter updates.
+
+![Smoke test waveform](docs/images/smoke_test_waveform.png)
+
+</details>
+
+<details>
+<summary><b>2. Backpressure Test</b></summary>
+
+Verifies that the router deasserts `s_tready` and does not count a packet
+while output 0 is not ready.
+
+![Backpressure waveform](docs/images/backpressure_test_waveform.png)
+
+</details>
+
+<details>
+<summary><b>3. Route-Mode Control Test</b></summary>
+
+Verifies that APB-programmed `route_mode_q` overrides `s_tdest` and forces
+packets to output 0 or output 1.
+
+![Route mode waveform](docs/images/route_mode_test_waveform.png)
+
+</details>
+
+<details>
+<summary><b>4. Reset During Traffic Test</b></summary>
+
+Verifies that reset clears router state while a packet is pending and that
+the router recovers correctly after reconfiguration.
+
+![Reset during traffic waveform](docs/images/reset_during_traffic_waveform.png)
+
+</details>
