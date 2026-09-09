@@ -23,10 +23,11 @@ flowchart LR
 * Two AXI-Stream output interfaces
 * Default routing based on `s_tdest`
 * Configurable force-route mode
-* Backpressure propagation using the valid-ready handshake
+* Backpressure propagation through the valid-ready handshake
 * Packet counter
 * Active-low asynchronous reset
-* APB illegal-address error response
+* APB illegal-address error response through `pslverr`
+* APB readback through `prdata`
 
 ## Register Map
 
@@ -45,9 +46,7 @@ flowchart LR
 | `2'b10`      | Force all packets to output 1       |
 | `2'b11`      | Reserved; uses `s_tdest` routing    |
 
-## Verification Environment
-
-The current environment uses directed SystemVerilog testbenches. Each testbench drives APB and AXI-Stream transactions, checks expected outputs, and produces a VCD waveform for debug.
+## Repository Structure
 
 ```text
 rtl/
@@ -57,42 +56,26 @@ tb/
 ├── router_smoke_tb.sv
 ├── router_backpressure_tb.sv
 ├── router_mode_tb.sv
-└── router_reset_during_traffic_tb.sv
+├── router_reset_during_traffic_tb.sv
+├── router_disabled_tb.sv
+├── router_illegal_apb_tb.sv
+└── router_apb_readback_tb.sv
+
+docs/
+└── images/
 ```
 
 ## Directed Test Results
 
-| Test                                | Scenario                                                                                                                   | Result |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------ |
-| `router_smoke_tb.sv`                | Enables the router through APB and verifies default `s_tdest` routing to output 0 and output 1                             | PASS   |
-| `router_backpressure_tb.sv`         | Blocks output 0 and verifies that `s_tready` deasserts, no packet is counted, and the packet transfers after ready returns | PASS   |
-| `router_mode_tb.sv`                 | Verifies that APB `route_mode` overrides `s_tdest` and forces packets to output 0 or output 1                              | PASS   |
-| `router_reset_during_traffic_tb.sv` | Asserts reset while a packet is pending under backpressure, then verifies reset recovery with a new packet                 | PASS   |
-
-## Key Verification Findings
-
-* A transfer occurs only when `tvalid && tready` is true.
-* When an output is not ready, the router propagates backpressure by deasserting `s_tready`.
-* A pending packet remains uncounted until the valid-ready handshake completes.
-* Reset immediately clears router state and prevents a pending packet from transferring after reset.
-* APB configuration controls the AXI-Stream data path through `enable` and `route_mode`.
-
-## How to Run
-
-1. Open [EDA Playground](https://www.edaplayground.com/).
-2. Select **SystemVerilog** and **Icarus Verilog**.
-3. Paste `rtl/apb_axis_router.sv` into the **Design** panel.
-4. Paste one testbench from `tb/` into the **Testbench** panel.
-5. Enable **Open EPWave after run**.
-6. Click **Run**.
-
-## Next Steps
-
-* Add APB illegal-address verification for `pslverr`
-* Add protocol assertions
-* Add a scoreboard for end-to-end packet checking
-* Add functional coverage and constrained-random testing
-* Build a regression test list and closure report
+| Testbench                           | Verification Scenario                                                                                    | Result |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------- | ------ |
+| `router_smoke_tb.sv`                | Enables the router through APB and verifies default `s_tdest` routing to output 0 and output 1           | PASS   |
+| `router_backpressure_tb.sv`         | Blocks output 0 and verifies input backpressure, stable pending traffic, and correct counter behavior    | PASS   |
+| `router_mode_tb.sv`                 | Verifies that APB-programmed `route_mode` overrides `s_tdest` and forces packets to output 0 or output 1 | PASS   |
+| `router_reset_during_traffic_tb.sv` | Asserts reset while a packet is pending under backpressure and verifies correct post-reset recovery      | PASS   |
+| `router_disabled_tb.sv`             | Verifies that a disabled router rejects valid input traffic until APB enable is asserted                 | PASS   |
+| `router_illegal_apb_tb.sv`          | Verifies `pslverr` assertion for illegal APB read and write addresses                                    | PASS   |
+| `router_apb_readback_tb.sv`         | Verifies APB readback of `CTRL`, `STATUS`, and `COUNT` through `prdata`                                  | PASS   |
 
 ## Waveform Evidence
 
@@ -108,8 +91,7 @@ Verifies default packet routing based on `s_tdest` and packet counter updates.
 <details>
 <summary><b>2. Backpressure Test</b></summary>
 
-Verifies that the router deasserts `s_tready` and does not count a packet
-while output 0 is not ready.
+Verifies that the router deasserts `s_tready` and does not count a packet while output 0 is not ready.
 
 ![Backpressure waveform](docs/images/backpressure_test_waveform.png)
 
@@ -118,8 +100,7 @@ while output 0 is not ready.
 <details>
 <summary><b>3. Route-Mode Control Test</b></summary>
 
-Verifies that APB-programmed `route_mode_q` overrides `s_tdest` and forces
-packets to output 0 or output 1.
+Verifies that APB-programmed `route_mode_q` overrides `s_tdest` and forces packets to output 0 or output 1.
 
 ![Route mode waveform](docs/images/route_mode_test_waveform.png)
 
@@ -128,9 +109,62 @@ packets to output 0 or output 1.
 <details>
 <summary><b>4. Reset During Traffic Test</b></summary>
 
-Verifies that reset clears router state while a packet is pending and that
-the router recovers correctly after reconfiguration.
+Verifies that reset clears router state while a packet is pending and that the router recovers correctly after reconfiguration.
 
 ![Reset during traffic waveform](docs/images/reset_during_traffic_waveform.png)
 
 </details>
+
+<details>
+<summary><b>5. Disabled Router Test</b></summary>
+
+Verifies that the router deasserts `s_tready`, suppresses output valid signals, and does not count traffic while `enable=0`.
+
+![Disabled router waveform](docs/images/disabled_router_waveform.png)
+
+</details>
+
+<details>
+<summary><b>6. Illegal APB Address Test</b></summary>
+
+Verifies that `pslverr` is asserted only during the APB access phase for illegal read and write addresses, while legal accesses remain error-free.
+
+![Illegal APB waveform](docs/images/illegal_apb_waveform.png)
+
+</details>
+
+<details>
+<summary><b>7. APB Readback Test</b></summary>
+
+Verifies that `prdata` correctly returns the reset and programmed values of `CTRL`, the current `STATUS`, and the final packet `COUNT`.
+
+![APB readback waveform](docs/images/apb_readback_waveform.png)
+
+</details>
+
+## Key Verification Findings
+
+* AXI-Stream data transfers occur only when `tvalid && tready` is true.
+* Backpressure propagates from a blocked output to the AXI-Stream input through `s_tready`.
+* A packet remains uncounted until a valid-ready handshake completes.
+* Reset immediately clears router state and prevents pending traffic from surviving reset.
+* APB configuration controls the AXI-Stream data path through `enable` and `route_mode`.
+* Illegal APB accesses are detected through `pslverr`.
+* APB software-visible register values are verified through `prdata`.
+
+## How to Run
+
+1. Open [EDA Playground](https://www.edaplayground.com/).
+2. Select **SystemVerilog** and **Icarus Verilog**.
+3. Paste `rtl/apb_axis_router.sv` into the **Design** panel.
+4. Paste one testbench from `tb/` into the **Testbench** panel.
+5. Enable **Open EPWave after run**.
+6. Click **Run**.
+
+## Next Steps
+
+* Add protocol assertions using SystemVerilog Assertions
+* Add an end-to-end scoreboard
+* Add functional coverage
+* Add constrained-random traffic tests
+* Build a regression test list and verification closure report
