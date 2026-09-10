@@ -239,9 +239,7 @@ The Icarus-compatible coverage collector reports **10 / 10 required bins hit**.
 
 </details>
 
-![Assertion checker waveform](docs/images/assertion_checker_waveform.png)
 
-</details>
 
 ## Key Verification Findings
 
