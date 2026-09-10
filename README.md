@@ -90,7 +90,7 @@ If the selected output is not ready, the router propagates backpressure by deass
 │       ├── disabled_router_waveform.png
 │       ├── illegal_apb_waveform.png
 │       ├── apb_readback_waveform.png
-│       └── scoreboard_integration_waveform.png
+│       ├── scoreboard_integration_waveform.png
 │       └── assertion_checker_waveform.png
 └── README.md
 ```
