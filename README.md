@@ -91,6 +91,7 @@ If the selected output is not ready, the router propagates backpressure by deass
 │       ├── illegal_apb_waveform.png
 │       ├── apb_readback_waveform.png
 │       └── scoreboard_integration_waveform.png
+│       └── assertion_checker_waveform.png
 └── README.md
 ```
 
@@ -106,6 +107,7 @@ If the selected output is not ready, the router propagates backpressure by deass
 | 6 | `router_illegal_apb_tb.sv`          | Invalid APB address; checks `pslverr` response               | PASS   |
 | 7 | `router_apb_readback_tb.sv`         | Reads CTRL, STATUS, and COUNT through APB                    | PASS   |
 | 8 | `router_scoreboard_tb.sv`           | Automated end-to-end checking with a reusable scoreboard     | PASS   |
+| 9 | `router_sva_tb.sv` | Assertion-based protocol checker: disabled state, backpressure stability, and no simultaneous output transfers | PASS |
 
 ## Scoreboard
 
@@ -198,7 +200,15 @@ Verifies default routing, force routing, backpressure behavior, packet counting,
 <details>
 <summary><b>9. Assertion Checker Integration Test</b></summary>
 
-Verifies key protocol properties automatically: disabled-router behavior, output stability during backpressure, and prevention of simultaneous transfers to both outputs.
+Verifies key protocol properties automatically using an Icarus-compatible assertion checker:
+
+- A disabled router must not accept input traffic.
+- Output data and valid must remain stable while the selected output is backpressured.
+- The router must not complete transfers to m0 and m1 in the same cycle.
+- Default routing, force routing, backpressure, and packet counting are exercised together.
+
+> Note: `router_sva.sv` contains the equivalent formal SystemVerilog Assertion (SVA) properties.  
+> `router_assertion_checker.sv` is the Icarus-compatible procedural implementation used for this simulation.
 
 ![Assertion checker waveform](docs/images/assertion_checker_waveform.png)
 
