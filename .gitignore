@@ -2,3 +2,5 @@
 *.vcd
 *.out
 a.out
+*.log
+build/

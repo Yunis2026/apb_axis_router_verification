@@ -264,10 +264,29 @@ The Icarus-compatible coverage collector reports **10 / 10 required bins hit**.
 7. Click **Run**.
 8. Check the simulation log for `PASS` and inspect the waveform in EPWave.
 
+## Regression
+
+A local Icarus Verilog regression script runs all verification tests automatically:
+
+```bash
+./scripts/run_regression.sh
+```
+
+Latest regression result:
+
+```text
+Passed: 10
+Failed: 0
+Total : 10
+REGRESSION PASS
+```
+
+![Regression summary](docs/images/regression_summary.png)
+
 ## Next Steps
 
 * Extend the assertion checker and run the formal SVA version with a commercial simulator.
-* Add functional coverage for route modes, destinations, enable state, and APB accesses.
+* Analyze coverage holes and add new coverage bins if requirements expand.
 * Create constrained-random packet stimulus.
 * Run multiple random seeds as a regression.
 * Add a regression script and verification closure report.
