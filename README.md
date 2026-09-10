@@ -194,6 +194,18 @@ Verifies default routing, force routing, backpressure behavior, packet counting,
 
 ![Scoreboard integration waveform](docs/images/scoreboard_integration_waveform.png)
 
+
+<details>
+<summary><b>9. Assertion Checker Integration Test</b></summary>
+
+Verifies key protocol properties automatically: disabled-router behavior, output stability during backpressure, and prevention of simultaneous transfers to both outputs.
+
+![Assertion checker waveform](docs/images/assertion_checker_waveform.png)
+
+</details>
+
+
+
 </details>
 
 ## Key Verification Findings
