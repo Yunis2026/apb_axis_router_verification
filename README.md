@@ -12,10 +12,10 @@ The DUT receives packets from one AXI-Stream input interface and routes each pac
 
 ```mermaid
 flowchart LR
-    APB["APB Master"] -->|"enable / route_mode"| DUT["APB-Controlled<br/>AXI-Stream Router"]
-    SRC["AXI-Stream Source"] -->|"s_tdata / s_tdest / s_tvalid"| DUT
-    DUT -->|"m0_tdata / m0_tvalid"| M0["Output m0"]
-    DUT -->|"m1_tdata / m1_tvalid"| M1["Output m1"]
+    APB["APB Master"] -->|"configure enable and route mode"| ROUTER["AXI Stream Router"]
+    SRC["AXI Stream Source"] -->|"input packet"| ROUTER
+    ROUTER -->|"selected packet"| M0["Output m0"]
+    ROUTER -->|"selected packet"| M1["Output m1"]
 ```
 
 ## DUT Features
@@ -219,10 +219,14 @@ Verifies default routing, force routing, backpressure behavior, packet counting,
 
 Verifies key protocol properties automatically using an Icarus-compatible assertion checker:
 
-* A disabled router must not accept input traffic.
-* Output data and valid must remain stable while the selected output is backpressured.
-* The router must not complete transfers to m0 and m1 in the same cycle.
-* Default routing, force routing, backpressure, and packet counting are exercised together.
+- A disabled router must not accept input traffic.
+- Output data and valid must remain stable while the selected output is backpressured.
+- The router must not complete transfers to m0 and m1 in the same cycle.
+- Default routing, force routing, backpressure, and packet counting are exercised together.
+
+![Assertion checker waveform](docs/images/assertion_checker_waveform.png)
+
+</details>
 
 <details>
 <summary><b>10. Functional Coverage Test</b></summary>
@@ -234,7 +238,6 @@ The Icarus-compatible coverage collector reports **10 / 10 required bins hit**.
 ![Functional coverage waveform](docs/images/coverage_test_waveform.png)
 
 </details>
-
 
 ![Assertion checker waveform](docs/images/assertion_checker_waveform.png)
 
