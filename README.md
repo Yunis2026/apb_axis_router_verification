@@ -111,6 +111,8 @@ If the selected output is not ready, the router propagates backpressure by deass
 | 7 | `router_apb_readback_tb.sv`         | Reads CTRL, STATUS, and COUNT through APB                                                                       | PASS   |
 | 8 | `router_scoreboard_tb.sv`           | Automated end-to-end data and destination checking with a reusable scoreboard                                   | PASS   |
 | 9 | `router_sva_tb.sv`                  | Assertion-based protocol checking: disabled state, backpressure stability, and no simultaneous output transfers | PASS   |
+| 10 | `router_coverage_tb.sv` | Functional coverage collection for enable, route modes, destinations, outputs, backpressure, and illegal APB access | PASS — 10/10 bins hit |
+
 
 ## Scoreboard
 
@@ -221,6 +223,18 @@ Verifies key protocol properties automatically using an Icarus-compatible assert
 * Output data and valid must remain stable while the selected output is backpressured.
 * The router must not complete transfers to m0 and m1 in the same cycle.
 * Default routing, force routing, backpressure, and packet counting are exercised together.
+
+<details>
+<summary><b>10. Functional Coverage Test</b></summary>
+
+Exercises disabled and enabled states, default routing, force-m0 mode, force-m1 mode, both destinations, both outputs, backpressure, and an illegal APB access.
+
+The Icarus-compatible coverage collector reports **10 / 10 required bins hit**.
+
+![Functional coverage waveform](docs/images/coverage_test_waveform.png)
+
+</details>
+
 
 ![Assertion checker waveform](docs/images/assertion_checker_waveform.png)
 
