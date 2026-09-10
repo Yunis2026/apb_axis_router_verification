@@ -8,7 +8,7 @@ The DUT receives packets from one AXI-Stream input interface and routes each pac
 
 * APB is the control plane: it configures `enable` and `route_mode`.
 * AXI-Stream is the data plane: it transfers packets using the `valid-ready` handshake.
-* The project includes directed tests, waveform evidence, a testplan, and a reusable scoreboard.
+* The project includes directed tests, waveform evidence, a testplan, a reusable scoreboard, and an assertion-based protocol checker.
 
 ```mermaid
 flowchart LR
@@ -50,13 +50,13 @@ flowchart LR
 
 ## AXI-Stream Handshake
 
-A packet transfer occurs only when:
+A packet is accepted by the router only when:
 
 ```text
 s_tvalid && s_tready
 ```
 
-For an output interface, a packet is consumed only when:
+A packet is consumed at an output only when:
 
 ```text
 m*_tvalid && m*_tready
@@ -79,7 +79,10 @@ If the selected output is not ready, the router propagates backpressure by deass
 │   ├── router_illegal_apb_tb.sv
 │   ├── router_apb_readback_tb.sv
 │   ├── router_scoreboard.sv
-│   └── router_scoreboard_tb.sv
+│   ├── router_scoreboard_tb.sv
+│   ├── router_sva.sv
+│   ├── router_assertion_checker.sv
+│   └── router_sva_tb.sv
 ├── docs/
 │   ├── testplan.md
 │   └── images/
@@ -91,39 +94,49 @@ If the selected output is not ready, the router propagates backpressure by deass
 │       ├── illegal_apb_waveform.png
 │       ├── apb_readback_waveform.png
 │       ├── scoreboard_integration_waveform.png
-│       ├── assertion_checker_waveform.png
-│
+│       └── assertion_checker_waveform.png
 └── README.md
 ```
 
 ## Directed Test Results
 
-| # | Testbench                           | Scenario                                                     | Result |
-| - | ----------------------------------- | ------------------------------------------------------------ | ------ |
-| 1 | `router_smoke_tb.sv`                | Default routing using `s_tdest`; checks packet counter       | PASS   |
-| 2 | `router_backpressure_tb.sv`         | Selected output is not ready; checks `s_tready` backpressure | PASS   |
-| 3 | `router_mode_tb.sv`                 | Checks force-`m0` and force-`m1` route modes                 | PASS   |
-| 4 | `router_reset_during_traffic_tb.sv` | Applies reset during traffic and verifies recovery           | PASS   |
-| 5 | `router_disabled_tb.sv`             | Router disabled; verifies no packet is accepted or forwarded | PASS   |
-| 6 | `router_illegal_apb_tb.sv`          | Invalid APB address; checks `pslverr` response               | PASS   |
-| 7 | `router_apb_readback_tb.sv`         | Reads CTRL, STATUS, and COUNT through APB                    | PASS   |
-| 8 | `router_scoreboard_tb.sv`           | Automated end-to-end checking with a reusable scoreboard     | PASS   |
-| 9 | `router_sva_tb.sv` | Assertion-based protocol checker: disabled state, backpressure stability, and no simultaneous output transfers | PASS |
+| # | Testbench                           | Scenario                                                                                                        | Result |
+| - | ----------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------ |
+| 1 | `router_smoke_tb.sv`                | Default routing using `s_tdest`; checks packet counter                                                          | PASS   |
+| 2 | `router_backpressure_tb.sv`         | Selected output is not ready; checks `s_tready` backpressure                                                    | PASS   |
+| 3 | `router_mode_tb.sv`                 | Checks force-`m0` and force-`m1` route modes                                                                    | PASS   |
+| 4 | `router_reset_during_traffic_tb.sv` | Applies reset during traffic and verifies recovery                                                              | PASS   |
+| 5 | `router_disabled_tb.sv`             | Router disabled; verifies no packet is accepted or forwarded                                                    | PASS   |
+| 6 | `router_illegal_apb_tb.sv`          | Invalid APB address; checks `pslverr` response                                                                  | PASS   |
+| 7 | `router_apb_readback_tb.sv`         | Reads CTRL, STATUS, and COUNT through APB                                                                       | PASS   |
+| 8 | `router_scoreboard_tb.sv`           | Automated end-to-end data and destination checking with a reusable scoreboard                                   | PASS   |
+| 9 | `router_sva_tb.sv`                  | Assertion-based protocol checking: disabled state, backpressure stability, and no simultaneous output transfers | PASS   |
 
 ## Scoreboard
 
-`router_scoreboard.sv` is a reusable checker connected to the DUT interfaces.
+`router_scoreboard.sv` is a reusable end-to-end checker connected to the DUT interfaces.
 
 When an input packet is accepted, the scoreboard:
 
 1. Captures the expected packet data.
 2. Calculates the expected output from `route_mode` and `s_tdest`.
-3. Stores both values in an expected queue.
+3. Stores data and expected destination in queues.
 4. Waits for an output handshake.
 5. Checks that the packet appears on the expected output with unchanged data.
 6. Reports an error with `$fatal` if data or destination does not match.
 
-This separates expected behavior from the testbench stimulus and makes the verification environment more scalable.
+This separates expected behavior from testbench stimulus and makes the verification environment more scalable.
+
+## Assertion-Based Protocol Checker
+
+`router_assertion_checker.sv` automatically checks key AXI-Stream protocol properties during simulation:
+
+* A disabled router must not accept input traffic.
+* `m0_tdata` and `m0_tvalid` must remain stable during m0 backpressure.
+* `m1_tdata` and `m1_tvalid` must remain stable during m1 backpressure.
+* The router must not complete transfers to m0 and m1 in the same cycle.
+
+`router_sva.sv` contains the equivalent formal SystemVerilog Assertion (SVA) properties. Since Icarus Verilog does not support complete concurrent SVA syntax, `router_assertion_checker.sv` is used as an Icarus-compatible procedural implementation for the executed simulation.
 
 ## Waveform Evidence
 
@@ -197,25 +210,19 @@ Verifies default routing, force routing, backpressure behavior, packet counting,
 
 ![Scoreboard integration waveform](docs/images/scoreboard_integration_waveform.png)
 
+</details>
 
 <details>
 <summary><b>9. Assertion Checker Integration Test</b></summary>
 
 Verifies key protocol properties automatically using an Icarus-compatible assertion checker:
 
-- A disabled router must not accept input traffic.
-- Output data and valid must remain stable while the selected output is backpressured.
-- The router must not complete transfers to m0 and m1 in the same cycle.
-- Default routing, force routing, backpressure, and packet counting are exercised together.
-
-> Note: `router_sva.sv` contains the equivalent formal SystemVerilog Assertion (SVA) properties.  
-> `router_assertion_checker.sv` is the Icarus-compatible procedural implementation used for this simulation.
+* A disabled router must not accept input traffic.
+* Output data and valid must remain stable while the selected output is backpressured.
+* The router must not complete transfers to m0 and m1 in the same cycle.
+* Default routing, force routing, backpressure, and packet counting are exercised together.
 
 ![Assertion checker waveform](docs/images/assertion_checker_waveform.png)
-
-</details>
-
-
 
 </details>
 
@@ -229,20 +236,22 @@ Verifies key protocol properties automatically using an Icarus-compatible assert
 * APB reads expose configured control and status values.
 * Illegal APB accesses assert `pslverr`.
 * The scoreboard independently checks expected destination and packet data for every completed transfer.
+* The assertion checker automatically monitors core protocol properties throughout simulation.
 
 ## How to Run
 
 1. Open [EDA Playground](https://www.edaplayground.com/).
 2. Select **SystemVerilog / Icarus Verilog**.
-3. Paste `rtl/apb_axis_router.sv` and, for the scoreboard test, `tb/router_scoreboard.sv` into the **Design** panel.
-4. Paste one testbench from `tb/` into the **Testbench** panel.
-5. Enable waveform generation with `$dumpfile` and `$dumpvars`.
-6. Click **Run**.
-7. Check the simulation log for `PASS` and inspect the waveform in EPWave.
+3. Paste `rtl/apb_axis_router.sv` into the **Design** panel.
+4. For scoreboard testing, also paste `tb/router_scoreboard.sv` into the Design panel.
+5. For assertion-checker testing, also paste `tb/router_assertion_checker.sv` into the Design panel.
+6. Paste one testbench from `tb/` into the **Testbench** panel.
+7. Click **Run**.
+8. Check the simulation log for `PASS` and inspect the waveform in EPWave.
 
 ## Next Steps
 
-* Add SystemVerilog Assertions (SVA) for protocol properties.
+* Extend the assertion checker and run the formal SVA version with a commercial simulator.
 * Add functional coverage for route modes, destinations, enable state, and APB accesses.
 * Create constrained-random packet stimulus.
 * Run multiple random seeds as a regression.
